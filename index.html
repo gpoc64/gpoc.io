@@ -50,13 +50,16 @@ body {
   line-height: 1.55;
   padding-left: max(16px, env(safe-area-inset-left, 0px));
   padding-right: max(16px, env(safe-area-inset-right, 0px));
-  padding-block: 28px 40px;
+  padding-block: 12px 24px;
 }
-.computer { max-width: 980px; margin: 0 auto; display: grid; justify-items: center; filter: drop-shadow(0 30px 40px rgba(0,0,0,.65)); }
+/* The whole terminal fits one viewport; only the CRT text scrolls inside the glass. */
+.computer { max-width: 980px; margin: 0 auto; display: grid; grid-template-rows: minmax(0,1fr) auto; grid-template-columns: minmax(0,1fr); justify-items: center; width: 100%;
+  height: calc(100vh - 36px); height: calc(100dvh - 36px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); min-height: 520px;
+  filter: drop-shadow(0 30px 40px rgba(0,0,0,.65)); }
 
 /* Moulded hood */
 .hood {
-  width: 94%; display: grid; gap: clamp(10px, 1.8vw, 16px);
+  width: 94%; min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(0,1fr) auto; grid-template-columns: minmax(0,1fr); gap: clamp(8px, 1.6vw, 14px);
   padding: clamp(12px, 2.4vw, 22px) clamp(12px, 3vw, 30px) clamp(14px, 2.6vw, 24px);
   border-radius: 26px 26px 6px 6px;
   background:
@@ -73,7 +76,8 @@ body {
   background: repeating-linear-gradient(90deg, #4e493d 0 3px, transparent 3px 8px);
   box-shadow: inset 0 1px 1px rgba(0,0,0,.25); opacity: .75; }
 .bezel {
-  padding: clamp(14px, 3vw, 30px) clamp(14px, 3.4vw, 34px);
+  min-height: 0; display: flex;
+  padding: clamp(10px, 2.6vw, 28px) clamp(10px, 3.2vw, 32px);
   border-radius: 20px;
   background: linear-gradient(180deg, #1a1917, var(--bezel) 30%, var(--bezel-hi));
   box-shadow: inset 0 6px 14px rgba(0,0,0,.75), inset 0 -2px 0 rgba(255,255,255,.06), 0 1px 0 rgba(255,255,255,.6), 0 -1px 0 rgba(0,0,0,.25);
@@ -85,7 +89,7 @@ body {
 .led.on { background: var(--lamp-red); box-shadow: 0 0 8px var(--lamp-red); }
 
 /* CRT */
-.crt { position: relative; overflow: hidden; border-radius: 30px / 26px;
+.crt { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; position: relative; overflow: hidden; border-radius: 30px / 26px;
   background: radial-gradient(ellipse at 50% 45%, #062512 0%, var(--glass) 75%);
   box-shadow: inset 0 0 60px rgba(0,0,0,.9), inset 0 0 6px rgba(92,255,138,.15), 0 0 0 3px #111;
   color: var(--phosphor); font-family: var(--f-screen); font-size: clamp(19px, 2.4vw, 23px); line-height: 1.18;
@@ -101,13 +105,13 @@ body {
   background: repeating-linear-gradient(180deg, rgba(0,0,0,.28) 0 1px, transparent 1px 3px); }
 .crt::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 3;
   background: radial-gradient(ellipse at 28% 12%, rgba(255,255,255,.05), transparent 38%), radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(0,0,0,.55) 100%); }
-.screen { position: relative; z-index: 1; padding: clamp(18px, 3.5vw, 34px) clamp(16px, 4vw, 40px);
-  max-height: 560px; overflow-y: auto; overscroll-behavior: contain;
+.screen { flex: 1; min-height: 0; position: relative; z-index: 1; padding: clamp(14px, 3vw, 30px) clamp(14px, 3.6vw, 38px);
+  overflow-y: auto; overscroll-behavior: contain;
   animation: flicker 6s infinite steps(1); scrollbar-width: thin; scrollbar-color: var(--phosphor-dim) transparent; }
 @keyframes flicker { 0%,100% { opacity: 1 } 47% { opacity: .96 } 48% { opacity: 1 } 81% { opacity: .975 } 82% { opacity: 1 } }
 .screen p, .screen pre { margin: 0; }
 .screen pre { font: inherit; white-space: pre-wrap; word-break: break-word; }
-.big { font-size: clamp(54px, 11vw, 112px); line-height: .85; letter-spacing: .02em; margin: 6px 0 4px; }
+.big { font-size: clamp(40px, min(8vw, 9vh), 92px); line-height: .85; letter-spacing: .02em; margin: 6px 0 4px; }
 .dim { color: var(--phosphor-dim); text-shadow: 0 0 6px rgba(47,158,85,.4); }
 .gap { height: 1em; }
 .rule { color: var(--phosphor-dim); overflow: hidden; white-space: nowrap; }
@@ -125,7 +129,7 @@ body {
 
 /* Keyboard deck (wedge) */
 .deck {
-  width: 100%; margin-top: -2px; display: grid; gap: clamp(10px, 1.6vw, 14px);
+  width: 100%; min-width: 0; margin-top: -2px; display: grid; grid-template-columns: minmax(0,1fr); gap: clamp(10px, 1.6vw, 14px);
   padding: clamp(14px, 2.4vw, 22px) clamp(14px, 4vw, 44px) clamp(18px, 3vw, 28px);
   clip-path: polygon(3% 0, 97% 0, 100% 100%, 0 100%);
   border-radius: 0 0 10px 10px;
@@ -168,7 +172,7 @@ body {
 .krow { display: grid; grid-template-columns: repeat(30, minmax(0,1fr)); gap: clamp(3px, .6vw, 6px); }
 .krow.fn { margin-bottom: clamp(4px, .8vw, 8px); }
 .key {
-  height: clamp(26px, 5vw, 40px); min-width: 0; padding: 3px 0 0 5px; border: 0; border-radius: 4px; cursor: pointer;
+  height: clamp(20px, min(4.4vw, 3.3vh), 32px); min-width: 0; padding: 3px 0 0 5px; border: 0; border-radius: 4px; cursor: pointer;
   display: flex; align-items: flex-start; justify-content: flex-start; overflow: hidden;
   font-family: var(--f-body); font-weight: 500; font-size: clamp(8px, 1.25vw, 11px); line-height: 1; letter-spacing: .02em; white-space: nowrap;
   color: var(--legend); background: linear-gradient(180deg, var(--keycap-hi), var(--keycap) 70%);
@@ -192,6 +196,24 @@ footer { max-width: 980px; margin: 22px auto 0; display: flex; flex-wrap: wrap; 
   .talk { grid-template-columns: 1fr; gap: 0; }
   .talk dd { margin-bottom: .5em; }
   .key { padding: 2px 0 0 2px; border-radius: 3px; }
+  /* On phones the system keyboard does the typing: keep only the orange command keys. */
+  .krow:not(.fn) { display: none; }
+  .krow.fn { margin-bottom: 0; grid-template-columns: repeat(4, minmax(0,1fr)); }
+  .krow.fn .key:first-child { grid-column: span 2 !important; }
+  .krow.fn .key:not(:first-child) { grid-column: auto !important; }
+  .krow.fn .key { height: 34px; justify-content: center; align-items: center; padding: 0; font-size: 10px; }
+  .reg-row:nth-child(n+3) { display: none; }
+  .computer { min-height: 480px; }
+  .hood { padding: 10px 10px 10px; }
+  .bezel { border-radius: 14px; }
+  .crt { font-size: 18px; border-radius: 18px / 16px; }
+  .hood-foot { font-size: 10px; letter-spacing: .12em; }
+}
+@media (max-height: 920px) {
+  .reg-row:nth-child(n+3) { display: none; }
+  .strip { padding-block: 8px; }
+  .kbd { gap: 5px; }
+  .krow.fn { margin-bottom: 4px; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
@@ -454,7 +476,7 @@ footer { max-width: 980px; margin: 22px auto 0; display: flex; flex-wrap: wrap; 
   var B = {
     s0: [
       ['IS THAT THE MICROWAVE IN THE CANTEEN AGAIN?', 'NO. THE CANTEEN IS 40 METRES AWAY. THIS IS COMING FROM ABOVE THE HORIZON, AND IT IS MOVING WITH THE STARS.'],
-      ['COULD BE A SATELLITE.', 'A SATELLITE WOULD CROSS THE BEAM IN MINUTES. THIS HAS STAYED IN ONE PLACE ON THE SKY FOR {n} BURSTS.'],
+      ['COULD BE A SATELLITE.', 'A SATELLITE WOULD CROSS THE BEAM IN MINUTES. THIS ONE HAS NOT MOVED AGAINST THE STARS.'],
       ['WRITE IT DOWN AS INTERFERENCE AND LET\'S GET COFFEE.', 'I CAN WRITE IT DOWN. I WOULD BE WRITING SOMETHING UNTRUE.'],
       ['HOW STRONG IS IT?', 'SIGNAL TO NOISE {snr}. ENOUGH TO BE SURE IT IS THERE. NOT ENOUGH TO BE SURE WHAT IT IS.']
     ],
@@ -818,7 +840,7 @@ footer { max-width: 980px; margin: 22px auto 0; display: flex; flex-wrap: wrap; 
   var K = function(l, s, k, a){ return { l: l, s: s, k: k || '', a: a }; };
   var layout = [
     [K('RECEIVE',5,'fn','RECEIVE'), K('DECODE',5,'fn','DECODE'), K('REPLY',4,'fn','REPLY'), K('AUTO',4,'fn','AUTO'), K('LOG',4,'fn','LOG'), K('PLAY',4,'fn','PLAY'), K('STOP',4,'fn','STOP')],
-    '1234567890'.split('').map(function(c){ return K(c,2); }).concat([K('-',2), K('DEL',6,'mod','DEL')]),
+    '1234567890'.split('').map(function(c){ return K(c,2); }).concat([K('-',2), K('DEL',8,'mod','DEL')]),
     [K('TAB',3,'mod')].concat('QWERTYUIOP'.split('').map(function(c){ return K(c,2); })).concat([K('[',2), K(']',2), K('\\',3,'mod')]),
     [K('CTRL',4,'mod')].concat('ASDFGHJKL'.split('').map(function(c){ return K(c,2); })).concat([K(';',2), K("'",2), K('RETURN',4,'mod','RET')]),
     [K('SHIFT',5,'mod')].concat('ZXCVBNM'.split('').map(function(c){ return K(c,2); })).concat([K(',',2), K('.',2), K('/',2), K('SHIFT',5,'mod')]),
@@ -857,6 +879,8 @@ footer { max-width: 980px; margin: 22px auto 0; display: flex; flex-wrap: wrap; 
     else if (k.length === 1) id = k.toUpperCase();
     if (id) flashKey(id);
     if (k === 'Escape' && document.activeElement === input) input.value = '';
+    var tag = (document.activeElement && document.activeElement.tagName) || '';
+    if (k === 'Enter' && tag !== 'INPUT' && tag !== 'BUTTON') { e.preventDefault(); run(''); }
   });
   toggle.addEventListener('click', function(){ playing ? stopAudio() : startAudio(); });
 })();
