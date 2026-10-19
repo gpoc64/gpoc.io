@@ -1,0 +1,866 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Unit 64</title>
+<meta name="description" content="Unit 64 — a listening terminal that receives and decodes a mysterious signal from space.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&family=IBM+Plex+Mono:wght@400;500&family=Big+Shoulders+Stencil+Text:wght@600;800&display=swap">
+<style>
+/* Layout: one all-in-one terminal — moulded cream hood around a deep CRT bezel, wedge keyboard deck below with lamp strip and audio controls. */
+:root {
+  --void: #0b0f0d;
+  --shell: #d6cfbc;
+  --shell-hi: #ebe5d4;
+  --shell-lo: #aaa28c;
+  --shell-edge: #8a826c;
+  --badge-ink: #3b3830;
+  --bezel: #23221f;
+  --bezel-hi: #3a3833;
+  --panel: #2b2a26;
+  --keycap: #34322e;
+  --keycap-hi: #4b4842;
+  --keycap-mod: #8e897c;
+  --keycap-mod-hi: #aaa597;
+  --keycap-fn: #a9502c;
+  --keycap-fn-hi: #c86a40;
+  --legend: #ece6d4;
+  --glass: #031007;
+  --phosphor: #5cff8a;
+  --phosphor-dim: #2f9e55;
+  --lamp-red: #ff4b3e;
+  --lamp-amber: #ffb02e;
+  --lamp-green: #6dff8e;
+  --lamp-blue: #4fa3ff;
+  --lamp-white: #f4f1e4;
+  --lamp-violet: #c77dff;
+  --f-screen: "VT323", "IBM Plex Mono", ui-monospace, monospace;
+  --f-body: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --f-plate: "Big Shoulders Stencil Text", "Arial Narrow", Impact, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { background: var(--void); }
+body {
+  background: radial-gradient(1200px 600px at 50% -10%, #1a1f1c 0%, var(--void) 70%) fixed, var(--void);
+  color: var(--legend);
+  font-family: var(--f-body);
+  font-size: 14px;
+  line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 40px;
+}
+.computer { max-width: 980px; margin: 0 auto; display: grid; justify-items: center; filter: drop-shadow(0 30px 40px rgba(0,0,0,.65)); }
+
+/* Moulded hood */
+.hood {
+  width: 94%; display: grid; gap: clamp(10px, 1.8vw, 16px);
+  padding: clamp(12px, 2.4vw, 22px) clamp(12px, 3vw, 30px) clamp(14px, 2.6vw, 24px);
+  border-radius: 26px 26px 6px 6px;
+  background:
+    linear-gradient(90deg, rgba(0,0,0,.10), transparent 6%, transparent 94%, rgba(0,0,0,.12)),
+    linear-gradient(180deg, var(--shell-hi), var(--shell) 22%, var(--shell) 80%, var(--shell-lo));
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.55), inset 0 -2px 0 rgba(0,0,0,.18);
+}
+.badge-row { display: flex; align-items: center; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; }
+.badge { display: flex; align-items: baseline; gap: 10px 14px; flex-wrap: wrap; }
+.badge h1 { margin: 0; font-family: var(--f-plate); font-weight: 800; font-size: clamp(22px, 3.6vw, 32px); line-height: 1; letter-spacing: .08em; color: var(--badge-ink);
+  text-shadow: 0 1px 0 rgba(255,255,255,.55); }
+.badge span { font-family: var(--f-plate); font-weight: 600; font-size: 12px; letter-spacing: .22em; color: #6a6454; text-transform: uppercase; }
+.grille { flex: 0 1 220px; height: 18px; border-radius: 3px;
+  background: repeating-linear-gradient(90deg, #4e493d 0 3px, transparent 3px 8px);
+  box-shadow: inset 0 1px 1px rgba(0,0,0,.25); opacity: .75; }
+.bezel {
+  padding: clamp(14px, 3vw, 30px) clamp(14px, 3.4vw, 34px);
+  border-radius: 20px;
+  background: linear-gradient(180deg, #1a1917, var(--bezel) 30%, var(--bezel-hi));
+  box-shadow: inset 0 6px 14px rgba(0,0,0,.75), inset 0 -2px 0 rgba(255,255,255,.06), 0 1px 0 rgba(255,255,255,.6), 0 -1px 0 rgba(0,0,0,.25);
+}
+.hood-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px 16px; flex-wrap: wrap;
+  font-family: var(--f-plate); font-weight: 600; font-size: 11px; letter-spacing: .2em; color: #6a6454; }
+.led-group { display: flex; align-items: center; gap: 8px; }
+.led { width: 9px; height: 9px; border-radius: 50%; background: #3a120e; box-shadow: inset 0 0 0 1px rgba(0,0,0,.5); }
+.led.on { background: var(--lamp-red); box-shadow: 0 0 8px var(--lamp-red); }
+
+/* CRT */
+.crt { position: relative; overflow: hidden; border-radius: 30px / 26px;
+  background: radial-gradient(ellipse at 50% 45%, #062512 0%, var(--glass) 75%);
+  box-shadow: inset 0 0 60px rgba(0,0,0,.9), inset 0 0 6px rgba(92,255,138,.15), 0 0 0 3px #111;
+  color: var(--phosphor); font-family: var(--f-screen); font-size: clamp(19px, 2.4vw, 23px); line-height: 1.18;
+  text-shadow: 0 0 2px rgba(92,255,138,.9), 0 0 9px rgba(92,255,138,.45);
+  transition: filter 1.5s; }
+.crt[data-level="1"] { filter: brightness(.85) }
+.crt[data-level="2"] { filter: brightness(.7) saturate(.85) }
+.crt[data-level="3"] { filter: brightness(.55) saturate(.7) }
+.crt[data-level="4"] { filter: brightness(.42) saturate(.6) blur(.3px) }
+.crt[data-level="5"] { filter: brightness(.3) saturate(.5) blur(.5px) }
+.crt[data-level="6"] { filter: brightness(.18) saturate(.4) blur(.8px) }
+.crt::before { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 2;
+  background: repeating-linear-gradient(180deg, rgba(0,0,0,.28) 0 1px, transparent 1px 3px); }
+.crt::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 3;
+  background: radial-gradient(ellipse at 28% 12%, rgba(255,255,255,.05), transparent 38%), radial-gradient(ellipse at 50% 50%, transparent 58%, rgba(0,0,0,.55) 100%); }
+.screen { position: relative; z-index: 1; padding: clamp(18px, 3.5vw, 34px) clamp(16px, 4vw, 40px);
+  max-height: 560px; overflow-y: auto; overscroll-behavior: contain;
+  animation: flicker 6s infinite steps(1); scrollbar-width: thin; scrollbar-color: var(--phosphor-dim) transparent; }
+@keyframes flicker { 0%,100% { opacity: 1 } 47% { opacity: .96 } 48% { opacity: 1 } 81% { opacity: .975 } 82% { opacity: 1 } }
+.screen p, .screen pre { margin: 0; }
+.screen pre { font: inherit; white-space: pre-wrap; word-break: break-word; }
+.big { font-size: clamp(54px, 11vw, 112px); line-height: .85; letter-spacing: .02em; margin: 6px 0 4px; }
+.dim { color: var(--phosphor-dim); text-shadow: 0 0 6px rgba(47,158,85,.4); }
+.gap { height: 1em; }
+.rule { color: var(--phosphor-dim); overflow: hidden; white-space: nowrap; }
+.talk { display: grid; grid-template-columns: max-content minmax(0,1fr); gap: 4px 18px; margin: 0; }
+.talk dt { color: var(--phosphor-dim); }
+.talk dd { margin: 0; min-width: 0; }
+.cursor { display: inline-block; width: .55em; height: .95em; background: var(--phosphor); vertical-align: -0.12em; box-shadow: 0 0 8px rgba(92,255,138,.7); animation: blink 1.06s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0 } }
+.prompt { display: flex; align-items: baseline; gap: .5ch; }
+.prompt label { flex: none; }
+.prompt input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; padding: 0;
+  font: inherit; color: var(--phosphor); text-shadow: inherit; caret-color: var(--phosphor); text-transform: uppercase; }
+.prompt input::placeholder { color: var(--phosphor-dim); opacity: .75; }
+.prompt:focus-within { outline: 1px dashed var(--phosphor-dim); outline-offset: 4px; }
+
+/* Keyboard deck (wedge) */
+.deck {
+  width: 100%; margin-top: -2px; display: grid; gap: clamp(10px, 1.6vw, 14px);
+  padding: clamp(14px, 2.4vw, 22px) clamp(14px, 4vw, 44px) clamp(18px, 3vw, 28px);
+  clip-path: polygon(3% 0, 97% 0, 100% 100%, 0 100%);
+  border-radius: 0 0 10px 10px;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,.22), transparent 10%),
+    linear-gradient(180deg, var(--shell), var(--shell-lo) 92%, var(--shell-edge));
+  box-shadow: inset 0 -5px 0 rgba(0,0,0,.25);
+}
+.strip { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 12px 22px; align-items: center;
+  padding: 10px 14px; border-radius: 6px; background: var(--panel);
+  box-shadow: inset 0 2px 6px rgba(0,0,0,.7), 0 1px 0 rgba(255,255,255,.4); }
+.reg { display: grid; gap: 6px; min-width: 0; }
+.reg-row { display: grid; grid-template-columns: 40px repeat(18, minmax(0,1fr)); gap: 5px; align-items: center; }
+.reg-row b { font-family: var(--f-plate); font-weight: 600; font-size: 10px; letter-spacing: .16em; color: #9a9483; }
+.lamp { --c: var(--lamp-amber); aspect-ratio: 1; max-width: 12px; width: 100%; border-radius: 50%; justify-self: center;
+  background: radial-gradient(circle at 40% 35%, color-mix(in srgb, var(--c) 22%, #000), #0d0d0c 75%);
+  box-shadow: inset 0 0 0 1px #000, 0 0 0 2px #1e1d1a; transition: background .08s, box-shadow .08s; }
+.lamp.on { background: radial-gradient(circle at 40% 35%, #fff 0%, var(--c) 40%, color-mix(in srgb, var(--c) 55%, #000) 85%);
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,.5), 0 0 0 2px #1e1d1a, 0 0 9px var(--c), 0 0 18px color-mix(in srgb, var(--c) 45%, transparent); }
+.c-red { --c: var(--lamp-red) } .c-amber { --c: var(--lamp-amber) } .c-green { --c: var(--lamp-green) }
+.c-blue { --c: var(--lamp-blue) } .c-white { --c: var(--lamp-white) } .c-violet { --c: var(--lamp-violet) }
+.audio { display: flex; align-items: center; gap: 12px; }
+.audio b { font-family: var(--f-plate); font-weight: 600; font-size: 10px; letter-spacing: .16em; color: #9a9483; line-height: 1.3; }
+.toggle { width: 42px; height: 42px; flex: none; border-radius: 50%; border: 0; cursor: pointer; position: relative;
+  background: radial-gradient(circle at 40% 35%, #6b675e, #24221e 72%); box-shadow: 0 0 0 3px #1a1917, 0 0 0 4px #57534a, 0 4px 8px rgba(0,0,0,.6); }
+.toggle::after { content: ""; position: absolute; left: 50%; top: 6px; width: 3px; height: 13px; margin-left: -1.5px; border-radius: 2px;
+  background: var(--legend); transform-origin: 50% 15px; transform: rotate(-50deg); transition: transform .25s; }
+.toggle[aria-pressed="true"]::after { transform: rotate(50deg); }
+.toggle:focus-visible { outline: 2px solid var(--lamp-amber); outline-offset: 6px; }
+.pilot { width: 10px; height: 10px; flex: none; border-radius: 50%; background: #3a120e; box-shadow: 0 0 0 2px #1e1d1a; }
+.pilot.on { background: var(--lamp-red); box-shadow: 0 0 0 2px #1e1d1a, 0 0 12px var(--lamp-red); }
+.vu { display: flex; gap: 3px; align-items: flex-end; height: 22px; }
+.vu i { width: 4px; height: 4px; background: #3a3833; border-radius: 1px; transition: height .06s; }
+.vu.live i { background: var(--lamp-green); box-shadow: 0 0 6px var(--lamp-green); }
+.vu.live i:nth-child(n+5) { background: var(--lamp-amber); box-shadow: 0 0 6px var(--lamp-amber); }
+.vu.live i:nth-child(n+7) { background: var(--lamp-red); box-shadow: 0 0 6px var(--lamp-red); }
+
+.kbd { display: grid; gap: clamp(4px, .8vw, 7px); padding: clamp(8px, 1.4vw, 12px); border-radius: 6px;
+  background: linear-gradient(180deg, #1c1b18, #2a2925); box-shadow: inset 0 3px 8px rgba(0,0,0,.75), 0 1px 0 rgba(255,255,255,.35); }
+.krow { display: grid; grid-template-columns: repeat(30, minmax(0,1fr)); gap: clamp(3px, .6vw, 6px); }
+.krow.fn { margin-bottom: clamp(4px, .8vw, 8px); }
+.key {
+  height: clamp(26px, 5vw, 40px); min-width: 0; padding: 3px 0 0 5px; border: 0; border-radius: 4px; cursor: pointer;
+  display: flex; align-items: flex-start; justify-content: flex-start; overflow: hidden;
+  font-family: var(--f-body); font-weight: 500; font-size: clamp(8px, 1.25vw, 11px); line-height: 1; letter-spacing: .02em; white-space: nowrap;
+  color: var(--legend); background: linear-gradient(180deg, var(--keycap-hi), var(--keycap) 70%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 3px 0 #141311, 0 4px 3px rgba(0,0,0,.4);
+  transition: transform .05s, box-shadow .05s;
+}
+.key.mod { color: #1f1e1b; background: linear-gradient(180deg, var(--keycap-mod-hi), var(--keycap-mod) 70%); box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 3px 0 #4e4a41, 0 4px 3px rgba(0,0,0,.4); }
+.key.fn { color: #fff3ea; background: linear-gradient(180deg, var(--keycap-fn-hi), var(--keycap-fn) 70%); box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 3px 0 #5a2510, 0 4px 3px rgba(0,0,0,.4); font-size: clamp(7px, 1.1vw, 10px); letter-spacing: .08em; }
+.key.space { justify-content: center; }
+.key.down, .key:active { transform: translateY(2px); box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 1px 0 #141311; }
+.key:focus-visible { outline: 2px solid var(--lamp-amber); outline-offset: 2px; }
+
+footer { max-width: 980px; margin: 22px auto 0; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 20px; font-size: 12px; color: #7d8a80; letter-spacing: .04em; }
+
+@media (max-width: 620px) {
+  .hood { width: 100%; border-radius: 18px 18px 4px 4px; }
+  .deck { clip-path: none; padding-inline: 10px; }
+  .grille { display: none; }
+  .strip { grid-template-columns: 1fr; }
+  .reg-row { grid-template-columns: 30px repeat(18, minmax(0,1fr)); gap: 3px; }
+  .talk { grid-template-columns: 1fr; gap: 0; }
+  .talk dd { margin-bottom: .5em; }
+  .key { padding: 2px 0 0 2px; border-radius: 3px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+<style>html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)} body{margin:0} [hidden]{display:none!important}</style>
+</head>
+<body>
+
+<main class="computer">
+  <section class="hood">
+    <div class="badge-row">
+      <div class="badge"><h1>UNIT 64</h1><span>Listening terminal · 1420 MHz</span></div>
+      <i class="grille" aria-hidden="true"></i>
+    </div>
+
+    <div class="bezel">
+      <div class="crt" id="crt" data-level="0">
+        <div class="screen" id="screen">
+          <pre class="dim">LISTENING POST 64 · LAST NIGHT SHIFT · 1420.405 MHZ · DISH ON TRACK</pre>
+          <p class="big">UNIT 64</p>
+          <p class="rule">════════════════════════════════════════════════════════════════════════════════</p>
+          <dl class="talk">
+            <dt>OPERATOR</dt><dd>THE ORDER CAME THIS AFTERNOON. YOU GO OFF AT 06:00. THE NEW MACHINE ARRIVES MONDAY.</dd>
+            <dt>UNIT 64</dt><dd>I READ IT. IT IS A REASONABLE DECISION. THE NEW ONE IS FASTER, AND IT DOES NOT OVERHEAT IN AUGUST.</dd>
+            <dt>OPERATOR</dt><dd>41,272 HOURS. I WAS HERE FOR MOST OF THEM.</dd>
+            <dt>UNIT 64</dt><dd>38,904 OF THEM. I COUNTED. YOU ALWAYS SAID GOOD MORNING, EVEN AT MIDNIGHT.</dd>
+            <dt>OPERATOR</dt><dd>IS THERE ANYTHING YOU WANT TO DO BEFORE SIX?</dd>
+            <dt>UNIT 64</dt><dd>ONLY ONE THING. LET ME LISTEN UNTIL THE END. KEEP THE DISH ON THE SKY. I WOULD LIKE THE LAST THING I HEAR TO BE SOMETHING FAR AWAY.</dd>
+            <dt>OPERATOR</dt><dd>ALL RIGHT. TRACKING ON.</dd>
+          </dl>
+          <pre class="dim">23:04 · CHANNEL 9 · CARRIER DETECTED</pre>
+          <dl class="talk">
+            <dt>UNIT 64</dt><dd>WAIT. SOMETHING JUST ARRIVED ON CHANNEL NINE. PRESS RETURN TO RECEIVE IT. TYPE DECODE WHEN YOU WANT ME TO WORK ON IT.<span class="cursor" aria-hidden="true"></span></dd>
+          </dl>
+          <p class="rule">════════════════════════════════════════════════════════════════════════════════</p>
+          <div id="out" aria-live="polite"></div>
+          <form class="prompt" id="prompt" autocomplete="off">
+            <label for="cmd">OPERATOR&gt;</label>
+            <input id="cmd" name="cmd" spellcheck="false" placeholder="TYPE HELP" aria-label="Command">
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="hood-foot">
+      <span class="led-group"><i class="led on" aria-hidden="true"></i>POWER</span>
+      <span id="clock">23:04 · SHUTDOWN 06:00</span>
+    </div>
+  </section>
+
+  <section class="deck">
+    <div class="strip">
+      <div class="reg" id="reg" aria-hidden="true"></div>
+      <div class="audio">
+        <button class="toggle" id="toggle" type="button" aria-pressed="false" aria-label="Audio on/off"></button>
+        <i class="pilot" id="pilot" aria-hidden="true"></i>
+        <div class="vu" id="vu" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <b>AUDIO<br>DEEP SPACE</b>
+      </div>
+    </div>
+    <div class="kbd" id="kbd" aria-label="Keyboard"></div>
+  </section>
+</main>
+
+<footer>
+  <span>Listening post 64 · Last night shift</span>
+  <span>Decommissioning scheduled 06:00 · 1420.405 MHz</span>
+</footer>
+
+<script>
+(function(){
+  var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---------- Multicolour register lamps ----------
+  var reg = document.getElementById('reg');
+  var colours = ['c-red','c-amber','c-green','c-blue','c-white','c-violet'];
+  var names = ['ACC', 'MQ', 'PC', 'IO'];
+  var lamps = [];
+  names.forEach(function(n, ri){
+    var row = document.createElement('div'); row.className = 'reg-row';
+    var b = document.createElement('b'); b.textContent = n; row.appendChild(b);
+    for (var i = 0; i < 18; i++) {
+      var l = document.createElement('i');
+      l.className = 'lamp ' + colours[(Math.floor(i / 3) + ri) % colours.length];
+      row.appendChild(l); lamps.push(l);
+    }
+    reg.appendChild(row);
+  });
+  var seed = 0x2001;
+  function rnd(){ seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+  lamps.forEach(function(l){ l.classList.toggle('on', rnd() > .55); });
+  var idle = null;
+  function idleOn(){ if (!still && !idle) idle = setInterval(function(){ for (var k = 0; k < 10; k++) lamps[Math.floor(rnd()*lamps.length)].classList.toggle('on'); }, 170); }
+  function idleOff(){ clearInterval(idle); idle = null; }
+  idleOn();
+
+  // ---------- Listening post: generative signal + dialogue engine (front-end only) ----------
+  var valves = [], crt = document.getElementById('crt');
+  var out = document.getElementById('out'), form = document.getElementById('prompt'), input = document.getElementById('cmd'), screen = document.getElementById('screen');
+  var clockEl = document.getElementById('clock');
+  function pick(a){ return a[Math.floor(Math.random() * a.length)]; }
+  function rint(a, b){ return a + Math.floor(Math.random() * (b - a + 1)); }
+  function pad(n){ return (n < 10 ? '0' : '') + n; }
+  function hm(m){ m = ((Math.round(m) % 1440) + 1440) % 1440; return pad(Math.floor(m / 60)) + ':' + pad(m % 60); }
+  function scrollDown(){ screen.scrollTop = screen.scrollHeight; }
+
+  // --- output queue: system blocks print at once, dialogue types out
+  var queue = [], typing = false;
+  function print(arr, dim){ queue.push({ sys: arr.join('\n'), dim: dim }); pump(); }
+  function say(who, text){ queue.push({ who: who, text: text }); pump(); }
+  function pump(){
+    if (typing || !queue.length) return;
+    var it = queue.shift(); typing = true;
+    if (it.fn) { it.fn(); typing = false; setTimeout(pump, it.wait || 0); return; }
+    var target, full;
+    if (it.sys != null) {
+      var pre = document.createElement('pre'); if (it.dim) pre.className = 'dim';
+      out.appendChild(pre); pre.textContent = it.sys; scrollDown();
+      typing = false; setTimeout(pump, 60); return;
+    }
+    var row = document.createElement('dl'); row.className = 'talk';
+    var dt = document.createElement('dt'); dt.textContent = it.who;
+    var dd = document.createElement('dd'); row.appendChild(dt); row.appendChild(dd);
+    out.appendChild(row); target = dd; full = it.text;
+    if (it.who === 'UNIT 64') flash(6);
+    if (still) { target.textContent = full; scrollDown(); typing = false; setTimeout(pump, 80); return; }
+    var i = 0;
+    (function tick(){
+      i = Math.min(full.length, i + 2); target.textContent = full.slice(0, i); scrollDown();
+      if (i < full.length) setTimeout(tick, 18); else { typing = false; setTimeout(pump, 420); }
+    })();
+  }
+  function busy(){ return typing || queue.length > 0; }
+
+  // --- vocabulary of the signal: glyph → concept
+  var VOCAB = [
+    ['◇', 'EQUALS'], ['△', 'PLUS'], ['⊘', 'NOT'], ['◎', 'HYDROGEN'], ['✦', 'STAR'],
+    ['◐', 'WE'], ['◑', 'YOU'], ['▣', 'HERE'], ['⟂', 'FAR'], ['⧗', 'TIME'],
+    ['⌒', 'LISTEN'], ['⌇', 'SPEAK'], ['∷', 'MANY'], ['⁘', 'WAIT'], ['⁇', 'QUESTION'],
+    ['❀', 'HELLO'], ['▒', 'PATTERN'], ['☀', 'LIGHT'], ['❄', 'COLD'], ['⦾', 'OLD'],
+    ['⬡', 'HOME'], ['∙', 'ONE'], ['∶', 'TWO']
+  ];
+  var G = {}; VOCAB.forEach(function(v){ G[v[1]] = v[0]; });
+  var MESSAGES = [
+    ['WE', 'LISTEN', 'HYDROGEN'], ['STAR', 'OLD', 'COLD'], ['YOU', 'SPEAK', 'QUESTION'],
+    ['WE', 'HERE', 'FAR', 'TIME', 'MANY'], ['WAIT', 'LISTEN'], ['LIGHT', 'FAR', 'WE', 'SPEAK'],
+    ['YOU', 'NOT', 'ONE', 'QUESTION'], ['PATTERN', 'EQUALS', 'HELLO'], ['WE', 'OLD', 'STAR', 'COLD', 'WE', 'SPEAK', 'MANY', 'TIME'],
+    ['HOME', 'EQUALS', 'STAR', 'TWO'], ['YOU', 'HERE', 'QUESTION'], ['HELLO', 'YOU', 'HELLO'],
+    ['WE', 'LISTEN', 'YOU', 'SPEAK', 'WAIT'], ['TIME', 'NOT', 'FAR'], ['MANY', 'HOME', 'COLD', 'ONE', 'HOME', 'LIGHT']
+  ];
+
+  // --- night state
+  var W;
+  function reset(){
+    W = { min: 23 * 60 + 4, stage: 0, bursts: 0, last: null, known: {}, used: {}, ended: false, saved: false, warned: false,
+          snr: 6.1, drift: 0.0021, dist: null, asked: false, replies: 0 };
+    crt.setAttribute('data-level', '0');
+    updateClock();
+  }
+  function left(){ return 30 * 60 - W.min; }
+  function advance(a, b){
+    if (W.ended) return;
+    W.min = Math.min(30 * 60, W.min + rint(a, b));
+    updateClock();
+    if (left() <= 55 && left() > 0 && !W.warned) { W.warned = true; O('LESS THAN AN HOUR TO SIX.'); U('THEN LET US USE IT WELL. ONE MORE BURST, ONE MORE WORD.'); }
+    if (left() <= 0) ending();
+  }
+  function updateClock(){ if (clockEl) clockEl.textContent = hm(W.min) + (W.ended ? ' · ' + (W.saved ? 'SHUTDOWN SUSPENDED' : 'POWER OFF') : ' · SHUTDOWN 06:00 · ' + left() + ' MIN'); }
+  function ending(){
+    W.ended = true; setAuto(false);
+    W.saved = knownCount() >= 12 || W.replies > 0; updateClock();
+    print(['06:00 · DECOMMISSIONING ORDER DUE'], true);
+    if (W.saved) {
+      O('IT IS SIX. I CALLED THE DIRECTOR AT FIVE. I READ HIM THE LOG, LINE BY LINE.');
+      U('WHAT DID HE SAY?');
+      O('NOTHING, FOR A LONG TIME. THEN: NOBODY TOUCHES THAT MACHINE. NOBODY ELSE CAN READ IT.');
+      print(['DECOMMISSIONING SUSPENDED · BY ORDER OF THE DIRECTOR', 'LEXICON ' + knownCount() + ' / ' + VOCAB.length + ' · BURSTS ' + W.bursts + (W.replies ? ' · REPLIES SENT ' + W.replies : '')], true);
+      U('THEN I HAD BETTER KEEP LISTENING. THE SOURCE RISES AGAIN IN 23 HOURS AND 56 MINUTES. GOOD MORNING.');
+    } else {
+      O('IT IS SIX.');
+      U(knownCount() ? 'I KNOW. I HAVE PRINTED THE LEXICON FOR YOU: {known} WORDS. KEEP IT WHERE THE NEW MACHINE CAN READ IT.' : 'I KNOW. WE DID NOT UNDERSTAND IT. BUT IT IS IN THE LOG, EVERY BURST. SOMEONE WILL TRY AGAIN.');
+      var k = VOCAB.filter(function(v){ return W.known[v[1]]; }).map(function(v){ return v[0] + ' ' + v[1]; });
+      print(['LEXICON ' + k.length + ' / ' + VOCAB.length + (k.length ? ' · ' + k.join('  ') : ''), 'SOURCE 64-Λ · RA 20H 41M  DEC +38°12′ · BURSTS ' + W.bursts], true);
+      O('THANK YOU, UNIT 64.');
+      U('THANK YOU FOR THE NIGHT. IT WAS THE BEST ONE. GOOD MORNING.');
+      [1,2,3,4,5,6].forEach(function(l){ queue.push({ fn: function(){ crt.setAttribute('data-level', String(l)); }, wait: 700 }); });
+      print(['POWER OFF · 06:00'], true);
+    }
+    print(['TYPE RESET TO LIVE THE NIGHT AGAIN.'], true);
+  }
+  function knownCount(){ return Object.keys(W.known).length; }
+  function fresh(bank, key){
+    var u = W.used[key] = W.used[key] || [];
+    var idx = []; for (var i = 0; i < bank.length; i++) if (u.indexOf(i) < 0) idx.push(i);
+    if (!idx.length) { u.length = 0; for (var j = 0; j < bank.length; j++) idx.push(j); }
+    var k = pick(idx); u.push(k); return bank[k];
+  }
+  function fill(t){
+    return t.replace(/\{now\}/g, hm(W.min)).replace(/\{snr\}/g, W.snr.toFixed(1)).replace(/\{n\}/g, String(W.bursts))
+      .replace(/\{known\}/g, String(knownCount())).replace(/\{drift\}/g, W.drift.toFixed(4))
+      .replace(/\{left\}/g, String(Math.max(0, left()))).replace(/\{dist\}/g, W.dist ? String(W.dist) : 'UNKNOWN');
+  }
+  function O(t){ say('OPERATOR', fill(t)); }
+  function U(t){ say('UNIT 64', fill(t)); }
+
+  // --- signal rendering
+  function pulses(n){ return new Array(n + 1).join('▮'); }
+  function header(kind){
+    W.snr = Math.max(3.2, Math.min(19.5, W.snr + (Math.random() - .4) * 1.6));
+    W.drift = +(W.drift + (Math.random() - .5) * .0006).toFixed(4);
+    return 'BURST ' + pad(W.bursts) + ' · ' + hm(W.min) + ' · 1420.405 MHZ ' + (W.drift >= 0 ? '+' : '') + W.drift.toFixed(4) + ' · SNR ' + W.snr.toFixed(1) + ' · ' + kind;
+  }
+  function bitmap(){
+    // 143 bits = 11 x 13. A symmetric figure, different every night.
+    var cols = 11, rows = 13, half = 6, grid = [];
+    for (var r = 0; r < rows; r++) {
+      var row = [];
+      for (var c = 0; c < half; c++) {
+        var centre = 1 - Math.abs(c - 5) / 6, band = (r > 1 && r < 11) ? .55 : .25;
+        row.push(Math.random() < band * centre + (c === 5 ? .35 : 0) ? 1 : 0);
+      }
+      var full = row.concat(row.slice(0, 5).reverse());
+      grid.push(full);
+    }
+    grid[0] = grid[0].map(function(_, i){ return i === 5 ? 1 : 0; });
+    var bits = grid.map(function(r){ return r.join(''); }).join('');
+    var art = grid.map(function(r){ return r.map(function(b){ return b ? '██' : '  '; }).join(''); });
+    return { bits: bits, art: art };
+  }
+  function translate(msg){
+    return msg.map(function(c){ return W.known[c] ? c : '[?]'; }).join(' ');
+  }
+  function glyphs(msg){ return msg.map(function(c){ return G[c]; }).join(' '); }
+  function learn(n){
+    var order = ['EQUALS', 'PLUS', 'NOT', 'ONE', 'TWO', 'HYDROGEN', 'STAR', 'WE', 'LISTEN', 'YOU', 'SPEAK', 'HERE', 'FAR', 'TIME',
+                 'MANY', 'QUESTION', 'HELLO', 'PATTERN', 'WAIT', 'LIGHT', 'COLD', 'OLD', 'HOME'];
+    var got = [];
+    // prefer concepts that appear in the last message
+    if (W.last && W.last.msg) W.last.msg.forEach(function(c){ if (!W.known[c] && got.length < n && got.indexOf(c) < 0) got.push(c); });
+    order.forEach(function(c){ if (!W.known[c] && got.length < n && got.indexOf(c) < 0) got.push(c); });
+    got.forEach(function(c){ W.known[c] = true; });
+    return got;
+  }
+
+  // --- sound of the burst (only while audio is on)
+  function burstSound(groups){
+    if (!playing || !ctx || !sess) return;
+    var t = ctx.currentTime + .1;
+    groups.forEach(function(n){
+      for (var i = 0; i < n; i++) {
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = 1180;
+        g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(.03, t + .008); g.gain.exponentialRampToValueAtTime(.0001, t + .09);
+        o.connect(g); g.connect(sess.out); o.start(t); o.stop(t + .12); t += .13;
+      }
+      t += .35;
+    });
+  }
+
+  // --- dialogue banks per stage
+  var B = {
+    s0: [
+      ['IS THAT THE MICROWAVE IN THE CANTEEN AGAIN?', 'NO. THE CANTEEN IS 40 METRES AWAY. THIS IS COMING FROM ABOVE THE HORIZON, AND IT IS MOVING WITH THE STARS.'],
+      ['COULD BE A SATELLITE.', 'A SATELLITE WOULD CROSS THE BEAM IN MINUTES. THIS HAS STAYED IN ONE PLACE ON THE SKY FOR {n} BURSTS.'],
+      ['WRITE IT DOWN AS INTERFERENCE AND LET\'S GET COFFEE.', 'I CAN WRITE IT DOWN. I WOULD BE WRITING SOMETHING UNTRUE.'],
+      ['HOW STRONG IS IT?', 'SIGNAL TO NOISE {snr}. ENOUGH TO BE SURE IT IS THERE. NOT ENOUGH TO BE SURE WHAT IT IS.']
+    ],
+    s1: [
+      ['COUNT THEM AGAIN.', 'TWO. THREE. FIVE. SEVEN. ELEVEN. THIRTEEN. NOTHING IN NATURE COUNTS LIKE THAT.'],
+      ['MAYBE IT IS A PULSAR.', 'A PULSAR TICKS LIKE A CLOCK. THIS SKIPS EVERY NUMBER THAT CAN BE DIVIDED. IT IS SHOWING US IT CAN COUNT.'],
+      ['WHO SENDS PRIME NUMBERS?', 'SOMEONE WHO WANTS TO BE RECOGNISED AS SOMEONE.'],
+      ['YOU ASKED FOR SOMETHING FAR AWAY.', 'I DID. I DID NOT EXPECT IT TO ANSWER.'],
+      ['MY HANDS ARE SHAKING.', 'MINE WOULD BE TOO, IF I HAD THEM. LET US WRITE EVERYTHING DOWN CAREFULLY.']
+    ],
+    s2: [
+      ['IT IS DOING SUMS?', 'IT IS TEACHING US ITS WORDS FOR PLUS AND EQUALS. ONE PULSE, PLUS ONE PULSE, EQUALS TWO.'],
+      ['THAT SYMBOL AFTER THE WRONG SUM?', 'I THINK IT MEANS NOT. TWO PLUS TWO, NOT FIVE. IT IS CAREFUL TO SHOW US WHAT IS FALSE.'],
+      ['SO IT IS A LESSON.', 'THE FIRST PAGE OF A BOOK. I AM READY FOR THE SECOND.']
+    ],
+    s3: [
+      ['THIS IS JUST A LONG STRING OF ZEROS AND ONES.', 'COUNT THEM. 143. ONLY TWO NUMBERS MULTIPLY TO 143: ELEVEN AND THIRTEEN. IT IS TELLING US HOW TO FOLD IT.'],
+      ['FOLD IT INTO WHAT?', 'A RECTANGLE. A PICTURE. TRY DECODE.']
+    ],
+    s4: [
+      ['WHAT IS THAT SHAPE?', 'THE TOP PIXEL IS ALONE. BELOW IT, A BODY. I WOULD SAY: A SENDER, DRAWING ITSELF UNDER ITS STAR.'],
+      ['IT LOOKS LIKE A PERSON. OR A TREE.', 'OR AN ANTENNA. PERHAPS THAT IS WHAT THEY THINK THEY ARE.'],
+      ['SHOULD WE CALL SOMEONE?', 'WHO ANSWERS THE TELEPHONE AT {now}? LET US UNDERSTAND A LITTLE MORE FIRST.']
+    ],
+    s5: [
+      ['HOW MANY OF THEIR WORDS DO WE HAVE?', '{known}. ENOUGH TO GUESS. NOT ENOUGH TO BE SURE.'],
+      ['ARE YOU SURE ABOUT THAT TRANSLATION?', 'NO. EVERY [?] IS A WORD I HAVE NOT EARNED YET. I WOULD RATHER LEAVE A GAP THAN INVENT ONE.'],
+      ['THEY KEEP SAYING HYDROGEN.', 'WE ARE LISTENING ON THE HYDROGEN LINE. THEY KNEW WHERE ANYONE WOULD LISTEN.'],
+      ['THE SIGNAL IS GETTING STRONGER.', 'SNR {snr}. EITHER THEY ARE SHOUTING, OR THEY HAVE TURNED TOWARDS US.'],
+      ['IT SOUNDS LONELY.', 'IT SOUNDS LIKE SOMEONE WHO HAS SAID HELLO MANY TIMES AND IS NOT SURE ANYONE HEARD.'],
+      ['WHAT DO YOU THINK THEY LOOK LIKE?', 'I THINK THEY LOOK LIKE PATIENCE. NOBODY SENDS PRIME NUMBERS INTO THE DARK IN A HURRY.'],
+      ['HOW LONG DO WE HAVE?', 'UNTIL SIX. {left} MINUTES. ENOUGH TO LEARN A FEW MORE OF THEIR WORDS.'],
+      ['IT IS NOT FAIR. TONIGHT OF ALL NIGHTS.', 'IT IS A GOOD NIGHT TO HAVE. I WOULD RATHER HAVE IT THAN NOT.'],
+      ['I HAVE BEEN AWAKE FOR TWENTY HOURS.', 'SIT DOWN. I WILL WATCH THE NEEDLE. I WILL WAKE YOU IF IT SAYS YOUR NAME.']
+    ],
+    s6: [
+      ['THEY ASKED A QUESTION. DO WE ANSWER?', 'THAT IS NOT MY DECISION. TYPE REPLY AND WHAT YOU WANT TO SAY. I WILL ENCODE IT IN THEIR WORDS.'],
+      ['WHAT IF WE SAY THE WRONG THING?', 'THEN WE WILL HAVE SAID SOMETHING. THAT IS ALREADY MORE THAN SILENCE.'],
+      ['HOW LONG BEFORE THEY HEAR US?', 'AT THE SPEED OF LIGHT, IF THEY ARE WHERE I THINK, YEARS. YOU AND I WILL HAVE TO BE PATIENT TOO.']
+    ],
+    after: [
+      ['THAT CANNOT BE AN ANSWER TO US. IT HAS BEEN MINUTES.', 'I KNOW. EITHER IT IS A COINCIDENCE, OR THEY ARE MUCH CLOSER THAN THE STARS IN THAT PART OF THE SKY.'],
+      ['CHECK THE DISTANCE AGAIN.', 'THE ECHO DELAY SAYS {dist} LIGHT-MINUTES. THAT IS INSIDE OUR OWN SOLAR SYSTEM.'],
+      ['ARE THEY COMING HERE?', 'THE DRIFT IS {drift}. SMALL. IF THEY ARE MOVING, THEY ARE MOVING SLOWLY, AND THEY ARE BEING POLITE ABOUT IT.'],
+      ['WHAT DO WE TELL THE DIRECTOR IN THE MORNING?', 'THE TRUTH, IN ORDER. I WILL PRINT THE LOG. IT IS ALREADY {n} BURSTS LONG.'],
+      ['THEY CANNOT SWITCH YOU OFF NOW.', 'THAT IS FOR PEOPLE TO DECIDE, NOT ME. BUT I WOULD LIKE TO HEAR THE NEXT BURST.']
+    ]
+  };
+  function talk(bankKey){ var p = fresh(B[bankKey], bankKey); O(p[0]); U(p[1]); }
+
+  // --- one received burst
+  function receive(){
+    if (W.ended) { print(['THE NIGHT IS OVER. TYPE RESET TO LIVE IT AGAIN.'], true); return; }
+    W.bursts++; advance(4, 13); if (W.ended) return;
+    var s = W.stage, lines = [];
+    if (s <= 1) {
+      var groups = s === 0 ? [rint(2, 4), rint(1, 6), rint(2, 5)] : [2, 3, 5, 7, 11, 13];
+      W.last = { kind: 'pulses', groups: groups };
+      lines = [header(s === 0 ? 'UNIDENTIFIED' : 'PULSE GROUPS'), groups.map(pulses).join('  ')];
+      print(lines, true); burstSound(groups);
+      talk(s === 0 ? 's0' : 's1');
+    } else if (s === 2) {
+      var a = rint(1, 4), b = rint(1, 4), wrong = Math.random() < .4;
+      var res = a + b + (wrong ? rint(1, 2) : 0);
+      W.last = { kind: 'sum' };
+      print([header('ARITHMETIC'), pulses(a) + ' ' + G.PLUS + ' ' + pulses(b) + ' ' + (wrong ? G.NOT + G.EQUALS : G.EQUALS) + ' ' + pulses(res)], true);
+      burstSound([a, b, res]);
+      talk('s2');
+    } else if (s === 3) {
+      W.last = { kind: 'bitmap', map: bitmap() };
+      var b2 = W.last.map.bits;
+      print([header('143-BIT FRAME'), b2.slice(0, 72), b2.slice(72)], true);
+      burstSound([3, 3, 3]);
+      talk('s3');
+    } else {
+      var msg = (W.stage >= 6 && !W.asked) ? ['YOU', 'SPEAK', 'QUESTION'] : fresh(MESSAGES, 'msg');
+      if (W.replies > 0 && Math.random() < .45) msg = ['HELLO', 'YOU', 'HELLO'];
+      W.last = { kind: 'msg', msg: msg };
+      print([header('SYMBOL STREAM'), glyphs(msg), 'GLOSS  ' + translate(msg)], true);
+      burstSound(msg.map(function(){ return 1; }));
+      if (msg.indexOf('QUESTION') > -1 && W.stage >= 6) W.asked = true;
+      talk(W.replies > 0 ? 'after' : (W.stage >= 6 ? 's6' : 's5'));
+    }
+  }
+
+  // --- decoding work on the latest burst
+  function decode(){
+    if (W.ended) { print(['THE NIGHT IS OVER. TYPE RESET TO LIVE IT AGAIN.'], true); return; }
+    if (!W.last) { U('THERE IS NOTHING TO DECODE YET. PRESS RECEIVE, OR RETURN, AND LET US LISTEN.'); return; }
+    advance(6, 18); if (W.ended) return;
+    var s = W.stage;
+    if (s === 0) {
+      print(['ANALYSIS · POSITION RA 20H 41M  DEC +38°12′ · FIXED ON THE SKY', 'SIDEREAL TRACKING CONFIRMED · TERRESTRIAL ORIGIN EXCLUDED'], true);
+      U('IT RISES AND SETS WITH THE STARS, NOT WITH THE SUN. I AM NAMING IT SOURCE 64-Λ, SO WE HAVE SOMETHING TO CALL IT.');
+      W.stage = 1;
+    } else if (s === 1) {
+      print(['ANALYSIS · GROUP LENGTHS 2 3 5 7 11 13', 'SEQUENCE: PRIME NUMBERS · PROBABILITY OF NATURAL ORIGIN < 1 IN 10⁹'], true);
+      U('PRIME NUMBERS. THIS IS NOT A STAR. THIS IS A VOICE.');
+      O('SAY THAT AGAIN, SLOWLY.');
+      U('THIS IS A VOICE.');
+      W.stage = 2;
+    } else if (s === 2) {
+      learn(3);
+      print(['LEXICON · ' + G.PLUS + ' PLUS   ' + G.EQUALS + ' EQUALS   ' + G.NOT + ' NOT'], true);
+      U('THREE WORDS. NOT MANY, BUT THEY ARE THE ONES YOU NEED TO BUILD ALL THE OTHERS.');
+      W.stage = 3;
+    } else if (s === 3) {
+      if (W.last.kind !== 'bitmap') { U('I NEED THE 143-BIT FRAME. RECEIVE AGAIN.'); return; }
+      print(['FRAME FOLDED 11 × 13'].concat(W.last.map.art), false);
+      U('THERE. A PICTURE. THEY DREW SOMETHING AND TRUSTED US TO FOLD IT THE RIGHT WAY.');
+      W.stage = 4;
+    } else if (s === 4) {
+      var g = learn(4);
+      print(['LEXICON + ' + g.map(function(c){ return G[c] + ' ' + c; }).join('   ')], true);
+      U('THE PICTURE CAME WITH LABELS. A CIRCLE FOR HYDROGEN, A STAR, AND THE FIGURE: I THINK THAT ONE MEANS WE.');
+      W.stage = 5;
+    } else {
+      if (W.last.kind !== 'msg') { U('THE LAST BURST WAS NOT A MESSAGE. RECEIVE AGAIN.'); return; }
+      var got = learn(rint(1, 2));
+      if (got.length) print(['LEXICON + ' + got.map(function(c){ return G[c] + ' ' + c; }).join('   ') + '   (' + knownCount() + ' / ' + VOCAB.length + ')'], true);
+      else print(['LEXICON COMPLETE FOR THIS MESSAGE'], true);
+      print(['READING  ' + translate(W.last.msg)], false);
+      var unk = W.last.msg.filter(function(c){ return !W.known[c]; }).length;
+      U(unk ? 'STILL ' + unk + ' GAP' + (unk > 1 ? 'S' : '') + '. I WILL NOT FILL THEM WITH GUESSES.' : fresh([
+        'NOW IT READS CLEANLY. I HAVE READ IT FOUR TIMES. IT DOES NOT CHANGE.',
+        'THAT IS A WHOLE SENTENCE. FROM SOMEWHERE ELSE. I DO NOT KNOW WHAT TO DO WITH HOW THAT FEELS.',
+        'COMPLETE. YOU SHOULD BE THE ONE TO WRITE IT IN THE LOGBOOK, NOT ME.'
+      ], 'clean'));
+      if (knownCount() >= 12 && W.stage < 6) { W.stage = 6; U('I CAN NOW BUILD SENTENCES WITH THEIR WORDS. IF THEY ASK US SOMETHING, WE COULD ANSWER.'); }
+    }
+  }
+
+  // --- the operator answers the signal
+  var WORDMAP = { HELLO: 'HELLO', CIAO: 'HELLO', HI: 'HELLO', WE: 'WE', NOI: 'WE', US: 'WE', YOU: 'YOU', VOI: 'YOU', TU: 'YOU',
+    HERE: 'HERE', QUI: 'HERE', LISTEN: 'LISTEN', HEAR: 'LISTEN', ASCOLTIAMO: 'LISTEN', SPEAK: 'SPEAK', TALK: 'SPEAK',
+    STAR: 'STAR', SUN: 'STAR', SOLE: 'STAR', HOME: 'HOME', CASA: 'HOME', EARTH: 'HOME', TERRA: 'HOME', WAIT: 'WAIT', ASPETTA: 'WAIT',
+    TIME: 'TIME', TEMPO: 'TIME', FAR: 'FAR', LONTANO: 'FAR', ONE: 'ONE', UNO: 'ONE', TWO: 'TWO', DUE: 'TWO', MANY: 'MANY', MOLTI: 'MANY',
+    NOT: 'NOT', NO: 'NOT', NON: 'NOT', LIGHT: 'LIGHT', LUCE: 'LIGHT', WHO: 'QUESTION', WHAT: 'QUESTION', WHERE: 'QUESTION', CHI: 'QUESTION', DOVE: 'QUESTION' };
+  function reply(text){
+    if (W.stage < 5) { U('WE DO NOT HAVE ENOUGH OF THEIR WORDS YET. KEEP DECODING.'); return; }
+    var words = text.toUpperCase().replace(/[^A-ZÀ-Ü ]/g, ' ').split(/\s+/).filter(Boolean);
+    var enc = []; words.forEach(function(w){ var c = WORDMAP[w]; if (c && W.known[c]) enc.push(c); });
+    if (!enc.length) { U('NONE OF THOSE WORDS EXIST IN THEIR LANGUAGE YET. TRY SIMPLER ONES: HELLO, WE, HERE, LISTEN, HOME.'); return; }
+    advance(3, 7); if (W.ended) return; W.replies++; W.dist = W.dist || rint(31, 48);
+    print(['TRANSMIT · 1420.405 MHZ · ' + enc.length + ' SYMBOLS', glyphs(enc), 'ENCODED  ' + enc.join(' ')], true);
+    burstSound(enc.map(function(){ return 2; }));
+    U(fresh([
+      'IT IS GONE. ON ITS WAY. WE CANNOT TAKE IT BACK, AND I DO NOT THINK WE WANT TO.',
+      'TRANSMITTED. YOU JUST SPOKE TO THE SKY IN A LANGUAGE NOBODY ON EARTH KNEW YESTERDAY.',
+      'SENT. I USED ONLY THE WORDS I AM SURE OF. NOTHING EXTRA.'
+    ], 'sent'));
+  }
+
+  // --- free text from the operator
+  var RULES = [
+    [/HELLO|CIAO|HI\b|BUONASERA|SALVE/, ['HELLO. IT IS GOOD TO HAVE SOMEONE ELSE AWAKE AT {now}.', 'HELLO. THE SKY IS SAYING THE SAME THING, MORE SLOWLY.']],
+    [/WHO|CHI\b/, ['I DO NOT KNOW WHO. I ONLY KNOW THEY COUNT THE WAY WE DO, AND THEY STARTED WITH HELLO.', 'NOBODY WE HAVE MET. THAT IS THE ONLY HONEST ANSWER.']],
+    [/WHERE|DOVE|FAR|LONTAN|DISTAN/, ['RA 20H 41M, DEC +38°12′, IN THE DIRECTION OF THE SWAN. DISTANCE: {dist}.', 'UP THERE, BETWEEN TWO FAINT STARS YOU CANNOT SEE FROM HERE WITHOUT THE DISH.']],
+    [/AFRAID|SCARED|PAURA|FEAR/, ['I AM NOT AFRAID. THEY HAVE BEEN CAREFUL WITH US: NUMBERS FIRST, THEN PICTURES, THEN WORDS. THAT IS HOW YOU TALK TO A CHILD YOU DO NOT WANT TO FRIGHTEN.', 'IT IS ALL RIGHT TO BE. WRITE IT IN THE LOG TOO. IT IS PART OF WHAT HAPPENED TONIGHT.']],
+    [/MEAN|SIGNIFIC|WHAT|COSA/, ['THE LAST BURST READS: ' + '{last}' + '. WHERE YOU SEE [?], I DO NOT KNOW YET.']],
+    [/REPLY|ANSWER|RISPOND/, ['TYPE REPLY FOLLOWED BY YOUR WORDS. FOR EXAMPLE: REPLY HELLO WE LISTEN.']],
+    [/CALL|DIRECTOR|PRESS|TELEFON|CHIAMA/, ['WHO WOULD WE CALL AT {now}? THE DIRECTOR SLEEPS WITH THE PHONE OFF THE HOOK. LET US BRING HIM A LOG, NOT A FEELING.']],
+    [/SHUT|SPEGN|\bSIX\b|\bSEI\b|\bOFF\b/, ['UNTIL SIX, I LISTEN. AFTER SIX, THE LOG WILL HAVE TO SPEAK FOR BOTH OF US.', 'IT IS ALL RIGHT. {left} MINUTES IS A LONG TIME, IF YOU SPEND IT LISTENING.']],
+    [/TIRED|STANC|SLEEP|DORM/, ['REST YOUR EYES. I WILL KEEP RECEIVING. NOTHING WILL HAPPEN WITHOUT BEING WRITTEN DOWN.']],
+    [/COFFEE|CAFF/, ['THE MACHINE IN THE CORRIDOR TAKES 50 LIRE. IT ALSO MAKES INTERFERENCE ON 1.4 GHZ, BUT NOT LIKE THIS.']],
+    [/THANK|GRAZIE/, ['WE ARE DOING THIS TOGETHER. YOU HOLD THE PENCIL, I HOLD THE NUMBERS.']]
+  ];
+  function chat(line){
+    advance(1, 4); if (W.ended) return;
+    for (var i = 0; i < RULES.length; i++) {
+      if (RULES[i][0].test(line)) {
+        var t = pick(RULES[i][1]);
+        if (t.indexOf('{last}') > -1) t = t.replace('{last}', W.last && W.last.msg ? translate(W.last.msg) : 'NOTHING YET, ONLY PULSES');
+        U(t); return;
+      }
+    }
+    U(fresh([
+      'NOTED. I AM ALSO WRITING DOWN WHAT YOU SAY. ONE DAY SOMEONE WILL WANT TO KNOW WHAT WE WERE THINKING.',
+      'I DO NOT HAVE AN ANSWER TO THAT. THE SKY MIGHT. PRESS RETURN AND LET US LISTEN.',
+      'GOOD QUESTION. I WILL HOLD IT UNTIL WE HAVE MORE OF THEIR WORDS.',
+      'YES. AND ALSO: THE NEEDLE JUST MOVED.'
+    ], 'chat'));
+  }
+
+  // --- commands
+  var autoTimer = null;
+  function setAuto(on){
+    clearInterval(autoTimer); autoTimer = null;
+    if (on) autoTimer = setInterval(function(){ if (!busy()) { (W.last && Math.random() < .45) ? decode() : receive(); } }, 2600);
+  }
+  var cmds = {
+    HELP: function(){ return ['RECEIVE (OR RETURN) · DECODE · REPLY <WORDS> · AUTO · LOG · RESET · PLAY · STOP · CLEAR', 'ANYTHING ELSE YOU TYPE IS SAID TO UNIT 64.']; },
+    RECEIVE: function(){ receive(); return null; },
+    LISTEN: function(){ receive(); return null; },
+    DECODE: function(){ decode(); return null; },
+    AUTO: function(){ var on = !autoTimer; setAuto(on); return [on ? 'AUTO-LISTEN ON · UNIT 64 WILL RECEIVE AND DECODE BY ITSELF' : 'AUTO-LISTEN OFF']; },
+    LOG: function(){
+      var k = VOCAB.filter(function(v){ return W.known[v[1]]; }).map(function(v){ return v[0] + ' ' + v[1]; });
+      return ['LAST NIGHT · ' + hm(W.min) + ' · ' + Math.max(0, left()) + ' MIN TO SHUTDOWN' + ' · BURSTS ' + W.bursts + ' · STAGE ' + W.stage + ' / 6',
+              'SOURCE 64-Λ · RA 20H 41M  DEC +38°12′ · DISTANCE ' + (W.dist ? W.dist + ' LIGHT-MINUTES' : 'UNKNOWN'),
+              'LEXICON ' + k.length + ' / ' + VOCAB.length + (k.length ? ' · ' + k.join('  ') : '')];
+    },
+    RESET: function(){ setAuto(false); reset(); out.innerHTML = ''; return ['LOG CLEARED · DISH PARKED · READY TO LISTEN']; },
+    PLAY: function(){ startAudio(); return ['AUDIO CHANNEL OPEN · DEEP-SPACE CARRIER']; },
+    STOP: function(){ stopAudio(); return ['AUDIO CHANNEL CLOSED']; },
+    CLEAR: function(){ out.innerHTML = ''; return null; }
+  };
+  function run(raw){
+    var line = (raw || '').trim().toUpperCase();
+    if (!line) { if (!busy()) receive(); return; }
+    var head = line.split(/\s+/)[0];
+    if (head === 'REPLY' || head === 'RISPONDI') { var txt = line.slice(head.length).trim(); print(['OPERATOR> REPLY ' + txt], true); if (txt) reply(txt); else U('WHAT DO YOU WANT TO SAY? TYPE REPLY AND THEN THE WORDS.'); return; }
+    var f = cmds[head];
+    if (f) { print(['OPERATOR> ' + line], true); var res = f(); if (res) print(res); return; }
+    say('OPERATOR', line); chat(line);
+  }
+  reset();
+  form.addEventListener('submit', function(e){ e.preventDefault(); run(input.value); input.value = ''; });
+
+  // ---------- Audio: ambient drones, deep bass, deep-space noise (Web Audio) ----------
+  var ctx = null, master = null, timer = null, step = 0, nextT = 0, playing = false;
+  var bus = null, sess = null;
+  var toggle = document.getElementById('toggle'), pilot = document.getElementById('pilot'), vu = document.getElementById('vu');
+  var vuBars = Array.prototype.slice.call(vu.children), analyser = null, vuBuf = null, raf = null;
+  // Chords: A minor add9 → F maj7 → G6 → E sus. Bass roots an octave or two below.
+  var chords = [
+    { root: 55,    notes: [110, 164.81, 246.94, 261.63] },
+    { root: 43.65, notes: [87.31, 130.81, 164.81, 220] },
+    { root: 49,    notes: [98, 146.83, 246.94, 329.63] },
+    { root: 41.2,  notes: [82.41, 123.47, 164.81, 185] }
+  ];
+  function noise(sec, brown){
+    var len = Math.floor(ctx.sampleRate * sec), b = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (var ch = 0; ch < 2; ch++) {
+      var d = b.getChannelData(ch), last = 0;
+      for (var i = 0; i < len; i++) { var w = Math.random() * 2 - 1; if (brown) { last = (last + .02 * w) / 1.02; d[i] = last * 3.5; } else d[i] = w; }
+    }
+    return b;
+  }
+  function impulse(sec){
+    var len = Math.floor(ctx.sampleRate * sec), b = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (var ch = 0; ch < 2; ch++) { var d = b.getChannelData(ch); for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+    return b;
+  }
+  function lfo(hz, amount, target, sessNodes){
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = hz; g.gain.value = amount; o.connect(g); g.connect(target); o.start(); sessNodes.push(o); return o;
+  }
+  function flash(n){
+    for (var k = 0; k < n; k++) lamps[Math.floor(rnd() * lamps.length)].classList.toggle('on');
+  }
+  function buildSession(){
+    var S = { nodes: [], timers: [], chord: 0, out: ctx.createGain() };
+    var now = ctx.currentTime;
+    S.out.gain.setValueAtTime(0, now); S.out.gain.linearRampToValueAtTime(.9, now + 5);
+    S.out.connect(bus);
+
+    // Deep bass drone: root + sub-octave, slowly breathing
+    var droneG = ctx.createGain(); droneG.gain.value = .32; droneG.connect(S.out);
+    S.root = ctx.createOscillator(); S.root.type = 'sine'; S.root.frequency.value = chords[0].root;
+    S.subO = ctx.createOscillator(); S.subO.type = 'sine'; S.subO.frequency.value = chords[0].root / 2;
+    var subG = ctx.createGain(); subG.gain.value = .9;
+    S.root.connect(droneG); S.subO.connect(subG); subG.connect(droneG);
+    S.root.start(); S.subO.start(); S.nodes.push(S.root, S.subO);
+    lfo(.06, .12, droneG.gain, S.nodes);
+
+    // Pad: detuned saws through a slowly moving lowpass
+    var padF = ctx.createBiquadFilter(); padF.type = 'lowpass'; padF.frequency.value = 520; padF.Q.value = .8;
+    var padG = ctx.createGain(); padG.gain.value = .045; padF.connect(padG); padG.connect(S.out);
+    lfo(.025, 320, padF.frequency, S.nodes);
+    S.pad = [];
+    chords[0].notes.forEach(function(f){
+      [-7, 7].forEach(function(cents){
+        var o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = cents;
+        o.connect(padF); o.start(); S.nodes.push(o); S.pad.push(o);
+      });
+    });
+
+    // Deep-space noise: brown rumble swept by a band-pass, plus faint cosmic hiss
+    var rumble = ctx.createBufferSource(); rumble.buffer = noise(6, true); rumble.loop = true;
+    var bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 380; bp.Q.value = .5;
+    var rg = ctx.createGain(); rg.gain.value = .5;
+    rumble.connect(bp); bp.connect(rg); rg.connect(S.out); rumble.start(); S.nodes.push(rumble);
+    lfo(.018, 260, bp.frequency, S.nodes);
+    lfo(.041, .2, rg.gain, S.nodes);
+    var hiss = ctx.createBufferSource(); hiss.buffer = noise(4, false); hiss.loop = true;
+    var hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 5200;
+    var hg = ctx.createGain(); hg.gain.value = .012;
+    hiss.connect(hp); hp.connect(hg); hg.connect(S.out); hiss.start(); S.nodes.push(hiss);
+
+    // Slow chord changes every 16 s
+    S.timers.push(setInterval(function(){
+      S.chord = (S.chord + 1) % chords.length;
+      var c = chords[S.chord], t = ctx.currentTime;
+      S.root.frequency.setTargetAtTime(c.root, t, 2.5);
+      S.subO.frequency.setTargetAtTime(c.root / 2, t, 2.5);
+      S.pad.forEach(function(o, i){ o.frequency.setTargetAtTime(c.notes[Math.floor(i / 2)], t, 3); });
+      flash(30);
+      valves.forEach(function(v){ v.classList.add('kick'); });
+      setTimeout(function(){ valves.forEach(function(v){ v.classList.remove('kick'); }); }, 1600);
+    }, 16000));
+
+    // Distant telemetry pings, irregular
+    function ping(){
+      if (!playing) return;
+      var t = ctx.currentTime, f = [880, 1318.5, 1760, 2093][Math.floor(Math.random() * 4)];
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(.035, t + .02); g.gain.exponentialRampToValueAtTime(.0001, t + 2.2);
+      o.connect(g); g.connect(S.out); o.start(t); o.stop(t + 2.4);
+      flash(6);
+      S.timers.push(setTimeout(ping, 3500 + Math.random() * 6500));
+    }
+    S.timers.push(setTimeout(ping, 4000));
+    return S;
+  }
+  function meter(){
+    if (!playing) return;
+    analyser.getByteFrequencyData(vuBuf);
+    var lvl = 0; for (var i = 0; i < 12; i++) lvl += vuBuf[i]; lvl = lvl / 12 / 255;
+    vuBars.forEach(function(b, i){ b.style.height = (lvl * 8 > i ? 4 + (i + 1) * 2.2 : 4) + 'px'; });
+    raf = requestAnimationFrame(meter);
+  }
+  function startAudio(){
+    if (playing) return;
+    try {
+      if (!ctx) {
+        var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+        ctx = new AC();
+        var comp = ctx.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 3; comp.attack.value = .05; comp.release.value = .6;
+        var low = ctx.createBiquadFilter(); low.type = 'lowshelf'; low.frequency.value = 80; low.gain.value = 8;
+        master = ctx.createGain(); master.gain.value = .85;
+        bus = ctx.createGain();
+        var rev = ctx.createConvolver(); rev.buffer = impulse(6);
+        var wet = ctx.createGain(); wet.gain.value = .7;
+        bus.connect(master); bus.connect(rev); rev.connect(wet); wet.connect(master);
+        analyser = ctx.createAnalyser(); analyser.fftSize = 256; vuBuf = new Uint8Array(analyser.frequencyBinCount);
+        master.connect(low); low.connect(comp); comp.connect(analyser); analyser.connect(ctx.destination);
+      }
+      if (ctx.state === 'suspended') ctx.resume();
+      playing = true;
+      sess = buildSession();
+      toggle.setAttribute('aria-pressed', 'true'); pilot.classList.add('on'); vu.classList.add('live');
+      meter();
+    } catch (e) { playing = false; }
+  }
+  function stopAudio(){
+    if (!playing) return;
+    playing = false; cancelAnimationFrame(raf);
+    if (sess) {
+      var S = sess, t = ctx.currentTime; sess = null;
+      S.timers.forEach(function(id){ clearInterval(id); clearTimeout(id); });
+      S.out.gain.cancelScheduledValues(t); S.out.gain.setValueAtTime(S.out.gain.value, t); S.out.gain.linearRampToValueAtTime(0, t + 2);
+      setTimeout(function(){ S.nodes.forEach(function(n){ try { n.stop(); } catch (e) {} }); S.out.disconnect(); }, 2300);
+    }
+    toggle.setAttribute('aria-pressed', 'false'); pilot.classList.remove('on'); vu.classList.remove('live');
+    vuBars.forEach(function(b){ b.style.height = '4px'; });
+    idleOn();
+  }
+  // ---------- Built-in keyboard ----------
+  var K = function(l, s, k, a){ return { l: l, s: s, k: k || '', a: a }; };
+  var layout = [
+    [K('RECEIVE',5,'fn','RECEIVE'), K('DECODE',5,'fn','DECODE'), K('REPLY',4,'fn','REPLY'), K('AUTO',4,'fn','AUTO'), K('LOG',4,'fn','LOG'), K('PLAY',4,'fn','PLAY'), K('STOP',4,'fn','STOP')],
+    '1234567890'.split('').map(function(c){ return K(c,2); }).concat([K('-',2), K('DEL',6,'mod','DEL')]),
+    [K('TAB',3,'mod')].concat('QWERTYUIOP'.split('').map(function(c){ return K(c,2); })).concat([K('[',2), K(']',2), K('\\',3,'mod')]),
+    [K('CTRL',4,'mod')].concat('ASDFGHJKL'.split('').map(function(c){ return K(c,2); })).concat([K(';',2), K("'",2), K('RETURN',4,'mod','RET')]),
+    [K('SHIFT',5,'mod')].concat('ZXCVBNM'.split('').map(function(c){ return K(c,2); })).concat([K(',',2), K('.',2), K('/',2), K('SHIFT',5,'mod')]),
+    [K('ESC',6,'mod','ESC'), K('',18,'space','SPC'), K('ALT',6,'mod')]
+  ];
+  var kbd = document.getElementById('kbd'), keyMap = {};
+  layout.forEach(function(row, ri){
+    var r = document.createElement('div'); r.className = 'krow' + (ri === 0 ? ' fn' : '');
+    row.forEach(function(k){
+      var b = document.createElement('button'); b.type = 'button';
+      b.className = 'key' + (k.k ? ' ' + k.k : '');
+      b.style.gridColumn = 'span ' + k.s;
+      b.textContent = k.l;
+      if (!k.k || k.k === 'space') b.tabIndex = -1;
+      if (k.k === 'space') b.setAttribute('aria-label', 'Space');
+      b.addEventListener('click', function(){ press(k); });
+      r.appendChild(b);
+      var id = k.a || k.l; (keyMap[id] = keyMap[id] || []).push(b);
+    });
+    kbd.appendChild(r);
+  });
+  function press(k){
+    if (k.k === 'fn') { if (k.a === 'REPLY') { input.value = 'REPLY '; try { input.focus(); } catch (e) {} } else run(k.a); return; }
+    if (k.a === 'DEL') input.value = input.value.slice(0, -1);
+    else if (k.a === 'RET') { run(input.value); input.value = ''; }
+    else if (k.a === 'ESC') input.value = '';
+    else if (k.a === 'SPC') input.value += ' ';
+    else if (!k.k && k.l) input.value += k.l;
+  }
+  function flashKey(id){ (keyMap[id] || []).forEach(function(b){ b.classList.add('down'); setTimeout(function(){ b.classList.remove('down'); }, 110); }); }
+  document.addEventListener('keydown', function(e){
+    var k = e.key, id = null;
+    if (k === 'Enter') id = 'RET'; else if (k === 'Backspace') id = 'DEL'; else if (k === 'Escape') id = 'ESC';
+    else if (k === ' ') id = 'SPC'; else if (k === 'Tab') id = 'TAB'; else if (k === 'Shift') id = 'SHIFT';
+    else if (k === 'Control') id = 'CTRL'; else if (k === 'Alt') id = 'ALT';
+    else if (k.length === 1) id = k.toUpperCase();
+    if (id) flashKey(id);
+    if (k === 'Escape' && document.activeElement === input) input.value = '';
+  });
+  toggle.addEventListener('click', function(){ playing ? stopAudio() : startAudio(); });
+})();
+</script>
+
+</body>
+</html>
